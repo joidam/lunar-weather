@@ -1,32 +1,46 @@
 # 🌙 Lunar Weather
 
-Generate polished daily weather cards for WeChat, Feishu/Lark, or any chat platform. No weather API key required — powered by Open-Meteo.
+> Generate polished daily weather reminder cards for WeChat, Feishu/Lark, and any chat platform — no API key required, powered by Open-Meteo.
 
-![Preview](assets/lunar-weather-preview.png)
+![Weather Card Preview](assets/lunar-weather-preview.png)
 
-## Features
+## ✨ Features
 
-- **Live weather data** from Open-Meteo (free, no API key)
-- **Dynamic card themes** — header changes color/style based on weather and day/night
-- **Mobile-friendly PNG** — rendered via Microsoft Edge headless
-- **Practical sections**: keywords, comfort score, alerts, outfit, air/UV, health, family tips, food, to-dos, quote
-- **Multi-channel delivery**: WeChat, Feishu/Lark, or any chat app via OpenClaw
+- **Zero-config weather data** — Live data from [Open-Meteo](https://open-meteo.com/) (completely free, no API key)
+- **Dynamic card themes** — Header color/style automatically adapts to weather condition + day/night state
+  - ☀️ Sunny day/night, ☁️ Cloudy, 🌫️ Fog, 🌧️ Rain, ❄️ Snow, ⛈️ Storm
+- **Mobile-optimized PNG output** — Renders via Microsoft Edge headless for pixel-perfect consistency
+- **Rich lifestyle sections** — Keywords, comfort score, alerts, outfit, air quality, UV index, health tips, family notes, food suggestions, daily to-dos, and an inspirational quote
+- **Multi-channel delivery** — Works with WeChat, Feishu/Lark, and any OpenClaw-connected platform
+- **Cron-ready** — Designed for daily 08:00 automated pushes via OpenClaw cron jobs
 
-## Quick start
+## 🚀 Quick Start
+
+### 1. Install
 
 ```bash
-cd ~/.openclaw/workspace/skills/lunar-weather
-
-# Fetch weather for any city
-python3 scripts/get_weather_data.py "Shanghai" today
-
-# Render card to PNG
-python3 scripts/render_weather_card.py "Shanghai" today
+cd ~/.openclaw/workspace/skills
+git clone https://github.com/joidam/lunar-weather.git
 ```
 
-Output goes to `outputs/`.
+### 2. Get weather data
 
-## Channel delivery examples
+```bash
+cd lunar-weather
+python3 scripts/get_weather_data.py "Shanghai" today
+python3 scripts/get_weather_data.py "Beijing" tomorrow
+```
+
+Supported city formats: `Shanghai`, `北京`, `Tokyo`, `London`, etc. (uses built-in coordinates for common cities; falls back to Nominatim geocoding for others).
+
+### 3. Render card to PNG
+
+```bash
+python3 scripts/render_weather_card.py "Shanghai" today
+# Output: outputs/weather-card-Shanghai-2026-05-08.png
+```
+
+### 4. Deliver via OpenClaw
 
 ```bash
 # WeChat / Weixin
@@ -34,42 +48,71 @@ openclaw message send \
   --channel openclaw-weixin \
   --target "<your-contact-id>" \
   --media outputs/weather-card-Shanghai-2026-05-08.png \
-  --message "🌙 Today's weather card"
+  --message "🌙 Today's weather — May 8"
 
 # Feishu / Lark
 openclaw message send \
   --channel feishu \
-  --account "<account-id>" \
+  --account main \
   --target "user:<open-id>" \
   --media outputs/weather-card-Shanghai-2026-05-08.png \
-  --message "🌙 Today's weather card"
+  --message "🌙 Today's weather — May 8"
 ```
 
-## Weather → Theme mapping
+## 🧩 Card Sections
 
-| Weather | Day | Night |
-|---|---|---|
-| Clear 0–1 | sunny-day (blue/gold) | sunny-night (deep blue) |
-| Cloudy 2–3 | cloudy-day (gray-blue) | cloudy-night (dark gray-blue) |
-| Fog 45,48 | fog (muted gray-white) | fog |
-| Rain 51–67,80–82 | rain-day (blue-gray) | rain-night (dark blue) |
-| Snow 71–77,85–86 | snow (ice blue-white) | snow |
-| Storm 95–99 | storm (purple-black + yellow) | storm |
+| Section | Description |
+|---|---|
+| 🌤️ Hero | City, date/time, temperature, feels-like, weather summary |
+| ✨ Keywords | 3 tags derived from weather, wind, and air quality |
+| 📊 Comfort Score | Single 0–100 score based on precipitation, AQI, and temperature |
+| 🚨 Alert | Weather warning if applicable (none if clear) |
+| 🌡️ Feels Like | Temperature range, apparent temp, humidity, wind speed |
+| 🧥 Outfit | Temperature-based clothing recommendation |
+| 🍃 Air & UV | AQI level + label, UV index, PM2.5 |
+| 🏃 Health & Activity | Recommended / discouraged activities for current conditions |
+| 👨‍👩‍👧 Family Tips | Elderly and children care reminders |
+| 🍵 Food & Drink | Dietary suggestions (warm drinks, avoid iced) |
+| 🧭 To-Do / Avoid | Daily recommendations and things to skip |
+| 💡 One-liner + Quote | Actionable advice + aligned daily quote |
 
-## Files
+## 🎨 Theme Mapping
 
-- `scripts/get_weather_data.py` — fetch & normalize weather from Open-Meteo
-- `scripts/render_weather_card.py` — HTML → PNG via Edge headless
-- `assets/weather-card-template.html` — design reference template
-- `assets/lunar-weather-preview.png` — preview image
+| Weather Code | Condition | Day Theme | Night Theme |
+|---|---|---|---|
+| 0–1 | Clear / Few clouds | ☀️ Sunny blue-gold | 🌙 Deep blue + violet |
+| 2–3 | Cloudy / Overcast | ⛅ Gray-blue cloud | ☁️ Dark slate blue |
+| 45, 48 | Fog | 🌫️ Muted gray-white | 🌫️ Same |
+| 51–67, 80–82 | Rain / Drizzle | 🌧️ Blue-gray rain | 🌧️ Deep blue-gray |
+| 71–77, 85–86 | Snow | ❄️ Ice blue-white | ❄️ Same |
+| 95–99 | Thunderstorm | ⛈️ Purple-black + yellow | ⛈️ Same |
 
-## Requirements
+## 🛠️ Requirements
 
-- macOS (Edge headless used for PNG rendering)
-- Microsoft Edge (installed)
-- Python 3.10+
-- OpenClaw with WeChat/Feishu channels configured
+- **macOS** (Edge headless is used for HTML → PNG rendering)
+- **Microsoft Edge** installed
+- **Python 3.10+**
+- **OpenClaw** with WeChat/Feishu channel configured
+- **Open-Meteo** — no API key, no account needed
 
----
+## 📁 File Structure
 
-MIT License · Open-Meteo (no API key required)
+```
+lunar-weather/
+├── SKILL.md                          # OpenClaw skill definition
+├── README.md                         # This file
+├── scripts/
+│   ├── get_weather_data.py           # Fetch & normalize weather from Open-Meteo
+│   └── render_weather_card.py        # Render HTML template → PNG via Edge
+└── assets/
+    ├── weather-card-template.html    # Design reference template
+    └── lunar-weather-preview.png     # Preview screenshot
+```
+
+## 🤝 Contributing
+
+Pull requests welcome! For major changes, please open an issue first.
+
+## 📄 License
+
+MIT — use freely, no strings attached.
