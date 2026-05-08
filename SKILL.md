@@ -1,79 +1,78 @@
 ---
 name: lunar-weather
 description: >
-  Generate localized daily weather reminder cards for chat apps (Feishu, WeChat/Weixin, etc.).
-  Activates when user says "daily weather card", "weather reminder", "morning weather push", or "weather PNG".
-  Uses Open-Meteo (free, no API key) to fetch live weather data and renders a mobile-friendly PNG card
-  with dynamic weather themes and practical lifestyle sections.
+  生成本地化每日天气推送卡（支持飞书/微信）。当用户说“每天天气推送”“天气提醒”“生成今日天气卡片”
+  或主动触发每日定时任务时激活。
+  基于 Open-Meteo 实时数据，渲染手机端友好的天气长图（PNG）发微信，
+  或飞书交互卡片消息。无需 API key。
 ---
 
 # 🌙 Lunar Weather
 
-Create polished daily weather cards for WeChat, Feishu/Lark, or any chat platform using live Open-Meteo data.
+An OpenClaw skill for generating localized daily weather cards.
 
-## What it does
+## Features
 
-- Fetches current weather, forecast, AQI, UV, wind, humidity, sunrise/sunset — no API key required.
-- Renders a mobile-friendly card image via Microsoft Edge headless on macOS.
-- Dynamically changes the card's header theme based on weather code + day/night.
-- Includes practical sections: keywords, comfort score, alerts, outfit, air/UV, health activity, family tips, food suggestions, to-dos, and a quote.
+- Queries Open-Meteo for real-time + forecast weather data (no API key required)
+- Renders a mobile-friendly PNG weather card with dynamic themes
+- Supports WeChat (PNG image) and Feishu (interactive card)
+- Configurable daily cron push
 
-## File map
+## Weather Theme Mapping
 
-- `scripts/get_weather_data.py` — fetch & normalize weather JSON from Open-Meteo.
-- `scripts/render_weather_card.py` — render HTML → PNG via Edge headless.
-- `assets/weather-card-template.html` — design reference template.
-- `assets/lunar-weather-preview.png` — generic English preview.
-- `assets/lunar-weather-preview-zh.png` — Chinese preview.
+Top hero background auto-matches `weather_code + day/night`:
 
-## Quick start
+| Weather | Day | Night |
+|---------|-----|-------|
+| Clear 0-1 | sunny-day | sunny-night |
+| Cloudy 2-3 | cloudy-day | cloudy-night |
+| Fog 45/48 | fog | fog |
+| Rain 51-67/80-82 | rain-day | rain-night |
+| Snow 71-77/85-86 | snow | snow |
+| Storm 95-99 | storm | storm |
 
-```bash
-cd <your-workspace>/skills/lunar-weather
+## Workflow
 
-# Fetch weather for any city
-python3 scripts/get_weather_data.py "Shanghai" today
-python3 scripts/get_weather_data.py "Beijing" tomorrow
-
-# Render card to PNG (outputs go to outputs/)
-python3 scripts/render_weather_card.py "Shanghai" today
-```
-
-## Channel delivery
-
-Replace target IDs with your own from OpenClaw channel config.
+### Step 1: Get weather data
 
 ```bash
-# WeChat / Weixin
-openclaw message send \
-  --channel openclaw-weixin \
-  --target "<wechat-contact-id>" \
-  --media outputs/weather-card-<City>-<date>.png \
-  --message "🌙 Today's weather card"
-
-# Feishu / Lark
-openclaw message send \
-  --channel feishu \
-  --account "<account-id>" \
-  --target "user:<open-id>" \
-  --media outputs/weather-card-<City>-<date>.png \
-  --message "🌙 Today's weather card"
+python3 scripts/get_weather_data.py <City> [YYYY-MM-DD]
 ```
 
-## Weather → Theme mapping
+### Step 2: Render weather card PNG
 
-| Weather code | Day theme | Night theme |
-|---|---|---|
-| 0–1 (clear) | sunny-day | sunny-night |
-| 2–3 (cloudy) | cloudy-day | cloudy-night |
-| 45, 48 (fog) | fog | fog |
-| 51–67, 80–82 (rain) | rain-day | rain-night |
-| 71–77, 85–86 (snow) | snow | snow |
-| 95–99 (thunderstorm) | storm | storm |
+```bash
+python3 scripts/render_weather_card.py <City> [YYYY-MM-DD]
+```
 
-## Notes
+- Calls `get_weather_data.py` to fetch real data
+- Reads `assets/weather-card-template.html` and fills in live data
+- Renders via Edge headless → PNG output
+- Output: `outputs/weather-card-<City>-<Date>.png`
 
-- **Edge headless** is used for deterministic HTML → PNG rendering on macOS.
-- Keep personal delivery targets in OpenClaw config or cron jobs, not inside this skill.
-- Open-Meteo is free and does not require an API key.
-- This skill ships with city coordinates for common Chinese and international cities; you can add your own via the `CITY_COORDS` dict in `get_weather_data.py`.
+### Step 3: Push
+
+**WeChat**: `openclaw message send --channel openclaw-weixin -t <to> --media <png>`
+**Feishu**: `openclaw message send --channel feishu -t <to> --json <card>`
+
+## Quick Test
+
+```bash
+python3 scripts/get_weather_data.py Beijing
+python3 scripts/render_weather_card.py Beijing
+ls -lh outputs/
+```
+
+## Key Files
+
+- `assets/weather-card-template.html` — Card HTML template
+- `scripts/get_weather_data.py` — Open-Meteo data fetch
+- `scripts/render_weather_card.py` — PNG renderer
+- `SKILL.md` — This file
+
+## Design Notes
+
+- Typography: Georgia serif for headlines, system sans for body
+- Dynamic hero theme based on weather + time-of-day
+- All sections: keywords, score, alerts, feels-like, outfit, UV/AQ, health, family, food, to-dos, quote
+- Bottom one-line advice in soft warm tones

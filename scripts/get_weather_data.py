@@ -8,7 +8,7 @@ import sys, json, urllib.request, os
 from datetime import datetime
 
 CITY_COORDS = {
-    'Shanghai': (31.2304, 121.4737), '北京': (39.9042, 116.4074),
+    '常州': (31.7729, 119.9461), '北京': (39.9042, 116.4074),
     '上海': (31.2304, 121.4737), '南京': (32.0603, 118.7969),
     '杭州': (30.2741, 120.1551), '苏州': (31.2989, 120.5853),
     '广州': (23.1291, 113.2644), '深圳': (22.5431, 114.0579),
@@ -67,13 +67,18 @@ def parse_date(s):
 
 def fetch(url):
     req = urllib.request.Request(url, headers={'User-Agent':'LunarWeather/1.0'})
-    with urllib.request.urlopen(req, timeout=10) as r: return json.loads(r.read().decode())
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(req, timeout=10) as r: return json.loads(r.read().decode())
+        except ssl.SSLEOFError as e:
+            if attempt == 2: raise
+            import time; time.sleep(2 ** attempt)
 
 def main():
-    city = sys.argv[1] if len(sys.argv)>1 else 'Shanghai'
+    city = sys.argv[1] if len(sys.argv)>1 else '常州'
     date_str = sys.argv[2] if len(sys.argv)>2 else 'today'
     target, days_ahead, date_obj = parse_date(date_str)
-    lat, lon = CITY_COORDS.get(city, CITY_COORDS['Shanghai'])
+    lat, lon = CITY_COORDS.get(city, CITY_COORDS['常州'])
     now = datetime.now()
 
     # current weather
