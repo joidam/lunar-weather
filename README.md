@@ -4,6 +4,8 @@
 
 ![Weather Card Preview](assets/lunar-weather-preview.png)
 
+![English Weather Card Preview](assets/lunar-weather-preview-en.png)
+
 ## ✨ What's New
 
 - **Compact alert design** — normal days no longer waste a full warning panel; real alerts are merged into the keyword chips.
@@ -130,7 +132,7 @@ lunar-weather/
 
 ## 🔒 Privacy Notes
 
-- The preview image uses a generic sample city.
+- Preview images use generic sample cities and include no exact personal location.
 - Do not commit private chat IDs, OpenClaw account IDs, local usernames, or exact personal locations.
 - For public examples, prefer generic cities and placeholder delivery targets.
 

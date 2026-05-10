@@ -7,7 +7,7 @@
 - Replaced the old repetitive daily to-do panel with a full-width “Weather Almanac” section.
 - Merged meaningful alerts into keyword chips; normal days no longer show an empty warning panel.
 - Added `scripts/render_weather_delivery.py` for delivery-friendly JSON output and optional WeChat-friendly JPG compression.
-- Updated preview image with a privacy-safe generic sample city.
+- Updated preview images with privacy-safe generic sample cities, including a full-English card.
 
 ## v1.0.0
 
