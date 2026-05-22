@@ -4,22 +4,20 @@
 
 ![Weather Card Preview](assets/lunar-weather-preview.png)
 
-![English Weather Card Preview](assets/lunar-weather-preview-en.png)
-
 ## ✨ What's New
 
-- **Compact alert design** — normal days no longer waste a full warning panel; real alerts are merged into the keyword chips.
-- **Dynamic weather almanac** — combines weather, lunar date, solar terms, heavenly stems/earthly branches, Bagua, light astrology, and a Huangji-style symbolic index.
-- **Smarter lifestyle guidance** — family reminders, food suggestions, and health/activity tips now change with both weather conditions and daily symbolic context.
-- **Full-width “Weather Almanac” block** — replaces the old repetitive daily to-do panel with a richer horizontal almanac section.
-- **WeChat-friendly delivery helper** — optional compressed JPG output for channels that may silently drop large PNGs.
+- **Quote-first closing block** — the card footer now ends with a centered daily quote instead of repeating the hero weather summary.
+- **Stable default renderer** — Pillow is the default PNG renderer; browser screenshots remain available for debugging with `LUNAR_WEATHER_RENDERER=browser`.
+- **More resilient Open-Meteo fetches** — weather requests retry with stepped timeouts before failing clearly.
+- **Safer forecast handling** — unsupported cities, past dates, and dates beyond the forecast window now fail explicitly.
+- **Delivery helper upgrades** — JSON output reports the renderer and JPEG conversion can use Pillow before falling back to macOS `sips`.
 
 ## ✨ Features
 
 - **Zero-config weather data** — Live data from [Open-Meteo](https://open-meteo.com/) (free, no API key)
 - **Dynamic card themes** — Header color/style adapts to weather condition + day/night state
   - ☀️ Sunny day/night, ☁️ Cloudy, 🌫️ Fog, 🌧️ Rain, ❄️ Snow, ⛈️ Storm
-- **Mobile-optimized output** — Renders via Microsoft Edge headless for pixel-perfect PNG cards
+- **Mobile-optimized output** — Renders stable Pillow PNG cards by default, with optional browser screenshot rendering for debugging
 - **Weather + lifestyle sections** — Keywords, comfort score, feels-like, outfit, air quality, UV index, health tips, family notes, food suggestions, weather almanac, and quote
 - **Alert-aware layout** — Warning chip appears only when meaningful weather alerts exist
 - **Multi-channel delivery** — Works with WeChat, Feishu/Lark, and any OpenClaw-connected platform
@@ -94,7 +92,7 @@ MEDIA:<media-path>
 | 👨‍👩‍👧 Family Tips | Weather safety guidance adjusted by lunar/Bagua/astrology context |
 | 🍵 Food & Drink | Dietary suggestions based on heat/cold/rain/AQI + seasonal context |
 | 🧭 Weather Almanac | Full-width dynamic almanac: lunar date, solar term/festival, Gan-Zhi, Bagua, astrology, Huangji-style symbolic index |
-| 💡 One-liner + Quote | Actionable advice + aligned daily quote |
+| 💡 Daily Quote | Centered weather-aligned closing quote |
 
 ## 🎨 Theme Mapping
 
@@ -109,9 +107,9 @@ MEDIA:<media-path>
 
 ## 🛠️ Requirements
 
-- **macOS** (Microsoft Edge headless is used for HTML → image rendering)
-- **Microsoft Edge** installed at `/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge`
 - **Python 3.10+**
+- **Pillow** for stable PNG/JPG rendering
+- Optional: **Microsoft Edge**, **Google Chrome**, or Chromium for browser screenshot debugging
 - **Open-Meteo** — no API key, no account needed
 - Optional: **OpenClaw** with WeChat/Feishu channel configured for automated delivery
 
@@ -123,7 +121,7 @@ lunar-weather/
 ├── README.md
 ├── scripts/
 │   ├── get_weather_data.py           # Fetch + normalize weather, lunar, almanac context
-│   ├── render_weather_card.py        # Render HTML → PNG via Edge
+│   ├── render_weather_card.py        # Render card to PNG via Pillow / optional browser
 │   └── render_weather_delivery.py    # Prepare text + media JSON, optional JPG compression
 └── assets/
     ├── weather-card-template.html

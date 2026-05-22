@@ -4,18 +4,28 @@
 lunar-weather: 获取天气数据（Open-Meteo，无需 API key）
 用法: python3 get_weather_data.py <城市> [YYYY-MM-DD| today| tomorrow]
 """
-import sys, json, urllib.request, os, ssl
-from datetime import datetime, date
+import socket, sys, json, urllib.request, urllib.error, ssl, time
+from datetime import datetime, date, timedelta
 
 CITY_COORDS = {
     '北京': (39.9042, 116.4074),
     '上海': (31.2304, 121.4737), '南京': (32.0603, 118.7969),
     '杭州': (30.2741, 120.1551), '苏州': (31.2989, 120.5853),
+    '无锡': (31.4912, 120.3119),
     '广州': (23.1291, 113.2644), '深圳': (22.5431, 114.0579),
     '成都': (30.5728, 104.0668), '武汉': (30.5928, 114.3055),
     '西安': (34.3416, 108.9398), '重庆': (29.4316, 106.9123),
     '东京': (35.6762, 139.6503), '香港': (22.3193, 114.1694),
 }
+
+CITY_ALIASES = {
+    '北京市': '北京', '上海市': '上海', '南京市': '南京',
+    '杭州市': '杭州', '苏州市': '苏州', '无锡市': '无锡',
+    '广州市': '广州', '深圳市': '深圳', '成都市': '成都', '武汉市': '武汉',
+    '西安市': '西安', '重庆市': '重庆', '东京都': '东京',
+}
+
+MAX_FORECAST_DAYS = 16
 
 WEATHER_CODES = {
     0: ('☀️', '晴'), 1: ('🌤️', '晴间多云'), 2: ('⛅', '多云'), 3: ('☁️', '阴'),
@@ -224,65 +234,146 @@ def dynamic_life_tips(d):
     almanac = f"{marker}｜宜：{yi}；忌：{ji}。" + (f"<br>{mystic}" if mystic else '')
     return {'family_tip': family, 'food_tip': food, 'almanac_tip': almanac, 'todo_items': todos, 'act_good': act_good, 'act_bad': act_bad}
 
-def parse_date(s):
-    t = datetime.now()
-    s = s.strip().lower()
-    if s in ('today','今天'): return t.strftime('%Y-%m-%d'), 0, t
-    if s in ('tomorrow','明天'): return (t.replace(hour=0)+__import__("datetime").timedelta(1)).strftime('%Y-%m-%d'), 1, t
-    for fmt in ('%Y-%m-%d','%m-%d'):
-        try: p = datetime.strptime(s, fmt).replace(year=t.year); return p.strftime('%Y-%m-%d'), max(0,(p-t).days), p
-        except: pass
-    raise ValueError(f'日期解析失败: {s}')
+def resolve_city(city):
+    city = (city or '上海').strip()
+    city = CITY_ALIASES.get(city, city)
+    if city not in CITY_COORDS:
+        supported = '、'.join(sorted(CITY_COORDS))
+        raise ValueError(f'暂不支持城市：{city}。当前支持：{supported}')
+    return city, CITY_COORDS[city]
+
+def parse_date(s, now=None):
+    t = now or datetime.now()
+    base = t.date()
+    s = (s or 'today').strip().lower()
+    if s in ('today','今天'):
+        target = base
+    elif s in ('tomorrow','明天'):
+        target = base + timedelta(days=1)
+    else:
+        target = None
+        for fmt in ('%Y-%m-%d','%m-%d'):
+            try:
+                parsed = datetime.strptime(s, fmt)
+                if fmt == '%m-%d':
+                    parsed = parsed.replace(year=t.year)
+                    if parsed.date() < base:
+                        parsed = parsed.replace(year=t.year + 1)
+                target = parsed.date()
+                break
+            except ValueError:
+                continue
+        if target is None:
+            raise ValueError(f'日期解析失败: {s}')
+
+    days_ahead = (target - base).days
+    if days_ahead < 0:
+        raise ValueError(f'暂不支持历史天气：{target.isoformat()}')
+    if days_ahead >= MAX_FORECAST_DAYS:
+        raise ValueError(f'Open-Meteo 免费预报最多支持未来 {MAX_FORECAST_DAYS - 1} 天：{target.isoformat()}')
+    return target.strftime('%Y-%m-%d'), days_ahead, t
 
 def fetch(url):
     req = urllib.request.Request(url, headers={'User-Agent':'LunarWeather/1.0'})
-    for attempt in range(3):
+    last_error = None
+    timeouts = (10, 20, 30, 45)
+    for attempt, timeout in enumerate(timeouts):
         try:
-            with urllib.request.urlopen(req, timeout=10) as r: return json.loads(r.read().decode())
-        except ssl.SSLEOFError as e:
-            if attempt == 2: raise
-            import time; time.sleep(2 ** attempt)
+            with urllib.request.urlopen(req, timeout=timeout) as r: return json.loads(r.read().decode())
+        except (ssl.SSLError, socket.timeout, urllib.error.URLError, TimeoutError, json.JSONDecodeError) as e:
+            last_error = e
+            if attempt < len(timeouts) - 1:
+                time.sleep(min(8, 2 ** attempt))
+    raise RuntimeError(f'天气数据请求失败: {last_error}')
+
+def first_present(*values, default=0):
+    for value in values:
+        if value is not None:
+            return value
+    return default
+
+def round_int(value, default=0):
+    return round(first_present(value, default=default))
+
+def pick_hourly(hourly, target_date):
+    times = hourly.get('time', [])
+    target_indices = [i for i, ts in enumerate(times) if ts.startswith(target_date)]
+    if not target_indices:
+        return {}
+
+    for hour in ('09:00', '12:00', '15:00', '18:00'):
+        for idx in target_indices:
+            if times[idx].endswith(hour):
+                return {k: (v[idx] if isinstance(v, list) and idx < len(v) else v) for k, v in hourly.items()}
+
+    idx = target_indices[len(target_indices) // 2]
+    return {k: (v[idx] if isinstance(v, list) and idx < len(v) else v) for k, v in hourly.items()}
 
 def main():
     city = sys.argv[1] if len(sys.argv)>1 else '上海'
     date_str = sys.argv[2] if len(sys.argv)>2 else 'today'
     target, days_ahead, date_obj = parse_date(date_str)
-    lat, lon = CITY_COORDS.get(city, CITY_COORDS['上海'])
+    city, (lat, lon) = resolve_city(city)
     now = datetime.now()
 
-    # current weather
-    cu = fetch(f'https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,apparent_temperature,relativehumidity_2m,weathercode,windspeed_10m,uv_index&timezone=auto')
-    c = cu['current']
-    code = c['weathercode']
-    emoji, desc = WEATHER_CODES.get(code, ('🌡️', '未知'))
-    is_night = now.hour < 6 or now.hour >= 19
-    if is_night and code in W_CODE_NIGHT: emoji = W_CODE_NIGHT[code]
-
     # daily forecast for target day
-    daily = fetch(f'https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weathercode,sunrise,sunset&timezone=auto&forecast_days={min(days_ahead+1,7)}')
-    didx = days_ahead if days_ahead < len(daily['daily']['time']) else 0
+    daily = fetch(f'https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weathercode,sunrise,sunset&timezone=auto&forecast_days={days_ahead+1}')
+    daily_times = daily['daily']['time']
+    if target not in daily_times:
+        raise RuntimeError(f'未拿到目标日期预报：{target}')
+    didx = daily_times.index(target)
     max_t = daily['daily']['temperature_2m_max'][didx]
     min_t = daily['daily']['temperature_2m_min'][didx]
-    precip = daily['daily']['precipitation_probability_max'][didx]
+    precip = first_present(daily['daily']['precipitation_probability_max'][didx], default=0)
     day_code = daily['daily']['weathercode'][didx]
     sunrise = daily['daily'].get('sunrise', [''])[didx] if daily['daily'].get('sunrise') else ''
     sunset = daily['daily'].get('sunset', [''])[didx] if daily['daily'].get('sunset') else ''
 
+    if days_ahead == 0:
+        cu = fetch(f'https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,apparent_temperature,relativehumidity_2m,weathercode,windspeed_10m,uv_index&timezone=auto')
+        c = cu['current']
+        code = first_present(c.get('weathercode'), day_code)
+        temp = first_present(c.get('temperature_2m'), (max_t + min_t) / 2)
+        feels = first_present(c.get('apparent_temperature'), temp)
+        humidity = first_present(c.get('relativehumidity_2m'), default=0)
+        wind = first_present(c.get('windspeed_10m'), default=0)
+        uv = first_present(c.get('uv_index'), default=0)
+        is_night = now.hour < 6 or now.hour >= 19
+    else:
+        hourly = fetch(f'https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&hourly=temperature_2m,apparent_temperature,relativehumidity_2m,weathercode,windspeed_10m,uv_index&timezone=auto&forecast_days={days_ahead+1}')
+        h = pick_hourly(hourly.get('hourly', {}), target)
+        code = first_present(day_code, h.get('weathercode'))
+        temp = first_present(h.get('temperature_2m'), (max_t + min_t) / 2)
+        feels = first_present(h.get('apparent_temperature'), temp)
+        humidity = first_present(h.get('relativehumidity_2m'), default=0)
+        wind = first_present(h.get('windspeed_10m'), default=0)
+        uv = first_present(h.get('uv_index'), default=0)
+        is_night = False
+
+    emoji, desc = WEATHER_CODES.get(code, ('🌡️', '未知'))
+    if is_night and code in W_CODE_NIGHT: emoji = W_CODE_NIGHT[code]
+
     # air quality
+    aq = {}
     try:
-        aq = fetch(f'https://air-quality-api.open-meteo.com/v1/air-quality?latitude={lat}&longitude={lon}&current=us_aqi,pm2_5,pm10,ozone,nitrogen_dioxide&timezone=auto')
-        aqi = aq['current'].get('us_aqi')
-    except: aqi = None
+        if days_ahead == 0:
+            aq = fetch(f'https://air-quality-api.open-meteo.com/v1/air-quality?latitude={lat}&longitude={lon}&current=us_aqi,pm2_5,pm10,ozone,nitrogen_dioxide&timezone=auto')
+            aq_current = aq.get('current', {})
+        else:
+            aq = fetch(f'https://air-quality-api.open-meteo.com/v1/air-quality?latitude={lat}&longitude={lon}&hourly=us_aqi,pm2_5,nitrogen_dioxide&timezone=auto&forecast_days={days_ahead+1}')
+            aq_current = pick_hourly(aq.get('hourly', {}), target)
+        aqi = aq_current.get('us_aqi')
+    except Exception:
+        aq_current = {}
+        aqi = None
     aqi_emoji, aqi_label_str = aqi_label(aqi)
-    pm25 = aq['current'].get('pm2_5') if 'current' in aq else None
-    no2 = aq['current'].get('nitrogen_dioxide') if 'current' in aq else None
+    pm25 = aq_current.get('pm2_5')
+    no2 = aq_current.get('nitrogen_dioxide')
 
     # UV
-    uv = c.get('uv_index', 0)
-    uv_desc = next((lbl for thresh,lbl,_ in UV_LEVELS if uv<=thresh), ('强','涂防晒+遮阳'))
+    uv_desc = next((lbl for thresh,lbl,_ in UV_LEVELS if uv<=thresh), '极强')
 
     # activity suggestions
-    feels = c.get('apparent_temperature', c['temperature_2m'])
     if feels < 5: act_good, act_bad = '室内瑜伽/健身房', '户外跑步'
     elif feels < 15: act_good, act_bad = '快走/慢跑', '大量出汗户外运动'
     elif feels < 25: act_good, act_bad = '跑步/骑行/球类', '正午暴晒下长时间户外'
@@ -297,20 +388,20 @@ def main():
     else: cloth = '短袖+防晒'
 
     # keywords
-    kw = [desc, wind_desc(c['windspeed_10m']), aqi_label_str if aqi else '空气良好']
+    kw = [desc, wind_desc(wind), aqi_label_str if aqi else '空气良好']
 
     result = {
         'city': city, 'target_date': target, 'days_ahead': days_ahead,
         'date_obj': target,
         'emoji': emoji, 'weather_desc': desc,
         'is_night': is_night,
-        'temp': round(c['temperature_2m']), 'feels': round(c['apparent_temperature']),
-        'humidity': c['relativehumidity_2m'],
-        'wind_speed': round(c['windspeed_10m']), 'wind_desc': wind_desc(c['windspeed_10m']),
+        'temp': round_int(temp), 'feels': round_int(feels),
+        'humidity': round_int(humidity),
+        'wind_speed': round_int(wind), 'wind_desc': wind_desc(wind),
         'max_temp': round(max_t), 'min_temp': round(min_t),
         'precip_prob': precip,
         'uv': uv, 'uv_level': uv_desc,
-        'aqi': aqi, 'aqi_emoji': aqi_emoji, 'aqi_label': aqi_label_str,
+        'aqi': aqi, 'aqi_emoji': aqi_emoji, 'aqi_label': aqi_label_str, 'aqi_standard': 'US AQI',
         'pm25': pm25, 'no2': no2,
         'weather_code': code, 'day_weather_code': day_code,
         'sunrise': sunrise, 'sunset': sunset,
@@ -325,4 +416,8 @@ def main():
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except Exception as e:
+        print(f'天气数据获取失败：{e}', file=sys.stderr)
+        sys.exit(1)
