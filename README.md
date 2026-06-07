@@ -6,7 +6,8 @@
 
 ## ✨ What's New
 
-- **Quote-first closing block** — the card footer now ends with a centered daily quote instead of repeating the hero weather summary.
+- **Richer “今日小句” footer** — Weather, temperature, AQI, solar terms, weekends, and month boundaries now shape the closing line.
+- **Repeat guard** — Local quote history avoids recent repeats while keeping the same city/date render stable.
 - **Stable default renderer** — Pillow is the default PNG renderer; browser screenshots remain available for debugging with `LUNAR_WEATHER_RENDERER=browser`.
 - **More resilient Open-Meteo fetches** — weather requests retry with stepped timeouts before failing clearly.
 - **Safer forecast handling** — unsupported cities, past dates, and dates beyond the forecast window now fail explicitly.
@@ -18,7 +19,7 @@
 - **Dynamic card themes** — Header color/style adapts to weather condition + day/night state
   - ☀️ Sunny day/night, ☁️ Cloudy, 🌫️ Fog, 🌧️ Rain, ❄️ Snow, ⛈️ Storm
 - **Mobile-optimized output** — Renders stable Pillow PNG cards by default, with optional browser screenshot rendering for debugging
-- **Weather + lifestyle sections** — Keywords, comfort score, feels-like, outfit, air quality, UV index, health tips, family notes, food suggestions, weather almanac, and quote
+- **Weather + lifestyle sections** — Keywords, comfort score, feels-like, outfit, air quality, UV index, health tips, family notes, food suggestions, weather almanac, and daily line
 - **Alert-aware layout** — Warning chip appears only when meaningful weather alerts exist
 - **Multi-channel delivery** — Works with WeChat, Feishu/Lark, and any OpenClaw-connected platform
 - **Cron-ready** — Designed for daily automated pushes via OpenClaw cron jobs
@@ -92,7 +93,7 @@ MEDIA:<media-path>
 | 👨‍👩‍👧 Family Tips | Weather safety guidance adjusted by lunar/Bagua/astrology context |
 | 🍵 Food & Drink | Dietary suggestions based on heat/cold/rain/AQI + seasonal context |
 | 🧭 Weather Almanac | Full-width dynamic almanac: lunar date, solar term/festival, Gan-Zhi, Bagua, astrology, Huangji-style symbolic index |
-| 💡 Daily Quote | Centered weather-aligned closing quote |
+| 💡 Daily Line | Centered weather-aligned “今日小句” with recent-repeat protection |
 
 ## 🎨 Theme Mapping
 

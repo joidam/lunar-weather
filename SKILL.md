@@ -75,4 +75,4 @@ MEDIA:<media-path>
 - Dynamic hero theme based on weather + day/night
 - Full-width “Weather Almanac” section replaces repetitive to-dos
 - Alert chip appears only when there is a meaningful weather warning
-- Centered quote footer avoids repeating the hero weather summary
+- Centered daily line footer avoids repeating the hero weather summary and protects against recent repeats

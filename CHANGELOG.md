@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.3.0 — Rich Daily Lines
+
+- Replaced the small fixed quote set with categorized daily line pools for weather, feels-like temperature, AQI, solar terms, weekends, and month boundaries.
+- Added deterministic date-based selection so the same city/date renders consistently while different days feel fresher.
+- Added local quote history with a 30-entry repeat guard and 60-record retention window.
+- Renamed the footer line to “今日小句” in rendered cards.
+- Refreshed the public preview card with the new footer style.
+
 ## v1.2.0 — Stable Renderer + Quote Footer
 
 - Replaced the repetitive one-liner footer with a centered weather-aligned daily quote.
